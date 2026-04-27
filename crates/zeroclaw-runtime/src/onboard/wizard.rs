@@ -441,6 +441,7 @@ pub async fn run_wizard(force: bool, callbacks: WizardCallbacks) -> Result<Confi
         opencode_cli: zeroclaw_config::schema::OpenCodeCliConfig::default(),
         sop: zeroclaw_config::schema::SopConfig::default(),
         shell_tool: zeroclaw_config::schema::ShellToolConfig::default(),
+        a2a: zeroclaw_config::schema::A2aConfig::default(),
     };
 
     println!(
@@ -920,6 +921,7 @@ async fn run_quick_setup_with_home(
         opencode_cli: zeroclaw_config::schema::OpenCodeCliConfig::default(),
         sop: zeroclaw_config::schema::SopConfig::default(),
         shell_tool: zeroclaw_config::schema::ShellToolConfig::default(),
+        a2a: zeroclaw_config::schema::A2aConfig::default(),
     };
 
     config.save().await?;

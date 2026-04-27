@@ -7,6 +7,7 @@
 //! - Request timeouts (30s) to prevent slow-loris attacks
 //! - Header sanitization (handled by axum/hyper)
 
+pub mod a2a;
 pub mod api;
 pub mod api_pairing;
 #[cfg(feature = "plugins-wasm")]
@@ -381,6 +382,8 @@ pub struct AppState {
     pub pending_pairings: Option<Arc<api_pairing::PairingStore>>,
     /// Shared canvas store for Live Canvas (A2UI) system
     pub canvas_store: CanvasStore,
+    /// A2A (Agent-to-Agent) protocol inbound task store
+    pub a2a_tasks: Arc<a2a::TaskStore>,
     /// WebAuthn state for hardware key authentication (optional, requires `webauthn` feature)
     #[cfg(feature = "webauthn")]
     pub webauthn: Option<Arc<api_webauthn::WebAuthnState>>,
@@ -905,6 +908,7 @@ pub async fn run_gateway(
         path_prefix: path_prefix.unwrap_or("").to_string(),
         web_dist_dir,
         canvas_store,
+        a2a_tasks: Arc::new(a2a::TaskStore::new()),
         #[cfg(feature = "webauthn")]
         webauthn: if config.security.webauthn.enabled {
             let secret_store = Arc::new(zeroclaw_runtime::security::SecretStore::new(
@@ -955,6 +959,10 @@ pub async fn run_gateway(
         .route("/wati", post(handle_wati_webhook))
         .route("/nextcloud-talk", post(handle_nextcloud_talk_webhook))
         .route("/webhook/gmail", post(handle_gmail_push_webhook))
+        // ── A2A (Agent-to-Agent) protocol ──
+        .route("/.well-known/agent.json", get(a2a::handle_agent_card))
+        .route("/a2a/v1/rpc", post(a2a::handle_rpc))
+        .route("/a2a/v1/tasks/{task_id}", get(a2a::handle_task_get_rest))
         // ── Claude Code runner hooks ──
         .route("/hooks/claude-code", post(api::handle_claude_code_hook))
         // ── Web Dashboard API routes ──
@@ -2423,6 +2431,7 @@ mod tests {
             device_registry: None,
             pending_pairings: None,
             canvas_store: CanvasStore::new(),
+            a2a_tasks: Arc::new(a2a::TaskStore::new()),
             #[cfg(feature = "webauthn")]
             webauthn: None,
         };
@@ -2495,6 +2504,7 @@ mod tests {
             device_registry: None,
             pending_pairings: None,
             canvas_store: CanvasStore::new(),
+            a2a_tasks: Arc::new(a2a::TaskStore::new()),
             #[cfg(feature = "webauthn")]
             webauthn: None,
         };
@@ -2893,6 +2903,7 @@ mod tests {
             device_registry: None,
             pending_pairings: None,
             canvas_store: CanvasStore::new(),
+            a2a_tasks: Arc::new(a2a::TaskStore::new()),
             #[cfg(feature = "webauthn")]
             webauthn: None,
         };
@@ -2973,6 +2984,7 @@ mod tests {
             device_registry: None,
             pending_pairings: None,
             canvas_store: CanvasStore::new(),
+            a2a_tasks: Arc::new(a2a::TaskStore::new()),
             #[cfg(feature = "webauthn")]
             webauthn: None,
         };
@@ -3065,6 +3077,7 @@ mod tests {
             device_registry: None,
             pending_pairings: None,
             canvas_store: CanvasStore::new(),
+            a2a_tasks: Arc::new(a2a::TaskStore::new()),
             #[cfg(feature = "webauthn")]
             webauthn: None,
         };
@@ -3129,6 +3142,7 @@ mod tests {
             device_registry: None,
             pending_pairings: None,
             canvas_store: CanvasStore::new(),
+            a2a_tasks: Arc::new(a2a::TaskStore::new()),
             #[cfg(feature = "webauthn")]
             webauthn: None,
         };
@@ -3198,6 +3212,7 @@ mod tests {
             device_registry: None,
             pending_pairings: None,
             canvas_store: CanvasStore::new(),
+            a2a_tasks: Arc::new(a2a::TaskStore::new()),
             #[cfg(feature = "webauthn")]
             webauthn: None,
         };
@@ -3272,6 +3287,7 @@ mod tests {
             device_registry: None,
             pending_pairings: None,
             canvas_store: CanvasStore::new(),
+            a2a_tasks: Arc::new(a2a::TaskStore::new()),
             #[cfg(feature = "webauthn")]
             webauthn: None,
         };
@@ -3343,6 +3359,7 @@ mod tests {
             device_registry: None,
             pending_pairings: None,
             canvas_store: CanvasStore::new(),
+            a2a_tasks: Arc::new(a2a::TaskStore::new()),
             #[cfg(feature = "webauthn")]
             webauthn: None,
         };

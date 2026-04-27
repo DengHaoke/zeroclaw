@@ -748,6 +748,17 @@ pub fn all_tools_with_runtime(
     let escalate_handle = escalate_tool.channel_map_handle();
     tool_arcs.push(Arc::new(escalate_tool));
 
+    // A2A outbound delegate tool — registered only when A2A is enabled AND at least
+    // one peer is configured. Otherwise the LLM sees no peers to address and the
+    // tool description becomes misleading.
+    if root_config.a2a.enabled && !root_config.a2a.peers.is_empty() {
+        let a2a_tool = zeroclaw_tools::a2a::A2aDelegateTool::new(
+            security.clone(),
+            Arc::new(root_config.a2a.clone()),
+        );
+        tool_arcs.push(Arc::new(a2a_tool));
+    }
+
     // Microsoft 365 Graph API integration
     if root_config.microsoft365.enabled {
         let ms_cfg = &root_config.microsoft365;

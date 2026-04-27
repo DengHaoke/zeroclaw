@@ -1675,6 +1675,7 @@ mod tests {
             path_prefix: String::new(),
             web_dist_dir: None,
             canvas_store: zeroclaw_runtime::tools::CanvasStore::new(),
+            a2a_tasks: Arc::new(crate::a2a::TaskStore::new()),
             #[cfg(feature = "webauthn")]
             webauthn: None,
         }

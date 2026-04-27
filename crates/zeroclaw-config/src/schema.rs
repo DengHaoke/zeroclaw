@@ -452,6 +452,11 @@ pub struct Config {
     #[serde(default)]
     #[nested]
     pub shell_tool: ShellToolConfig,
+
+    /// A2A (Agent-to-Agent) protocol configuration (`[a2a]`).
+    #[serde(default)]
+    #[nested]
+    pub a2a: A2aConfig,
 }
 
 /// Multi-client workspace isolation configuration.
@@ -2964,6 +2969,108 @@ impl Default for ShellToolConfig {
     fn default() -> Self {
         Self {
             timeout_secs: default_shell_tool_timeout_secs(),
+        }
+    }
+}
+
+// ── A2A (Agent-to-Agent) protocol ────────────────────────────────
+
+/// A2A (Agent-to-Agent) protocol configuration (`[a2a]` section).
+///
+/// Minimal implementation of the Google A2A protocol MVP subset:
+/// Agent Card discovery, synchronous `message/send`, polling `tasks/get`,
+/// bearer token auth. See `docs/a2a-minimal-port-gaps.md` for features
+/// deliberately out of scope in this build.
+#[derive(Clone, Serialize, Deserialize, Configurable)]
+#[cfg_attr(feature = "schema-export", derive(schemars::JsonSchema))]
+#[prefix = "a2a"]
+pub struct A2aConfig {
+    /// Enable A2A inbound server and outbound client tool.
+    #[serde(default)]
+    pub enabled: bool,
+    /// Agent name advertised in the agent card.
+    #[serde(default)]
+    pub agent_name: Option<String>,
+    /// Agent description advertised in the agent card.
+    #[serde(default)]
+    pub description: Option<String>,
+    /// Public URL for the agent card (auto-derived from gateway host/port if omitted).
+    #[serde(default)]
+    pub public_url: Option<String>,
+    /// Bearer token for authenticating inbound A2A requests.
+    #[serde(default)]
+    #[secret]
+    pub bearer_token: Option<String>,
+    /// Protocol version advertised in the agent card (defaults to crate version).
+    #[serde(default)]
+    pub version: Option<String>,
+    /// Capability tags advertised in the agent card skills list.
+    #[serde(default)]
+    pub capabilities: Vec<String>,
+    /// When true, the outbound `a2a_delegate` tool may call localhost / private
+    /// IPs. Default: false. Required for same-host agent-to-agent demos.
+    #[serde(default)]
+    pub allow_local_peers: bool,
+    /// Registered outbound peers, keyed by friendly name (e.g. `"aiops"`).
+    /// The `a2a_delegate` tool uses this registry; arbitrary URLs are rejected.
+    #[serde(default)]
+    pub peers: std::collections::HashMap<String, A2aPeerConfig>,
+}
+
+/// A single outbound A2A peer (used by the `a2a_delegate` tool).
+/// The `bearer_token` is redacted in Debug output but not via `#[secret]`
+/// because this struct is nested inside a HashMap and not Configurable-derived.
+#[derive(Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema-export", derive(schemars::JsonSchema))]
+pub struct A2aPeerConfig {
+    /// Base URL of the peer (e.g. `"http://127.0.0.1:42620"`).
+    pub endpoint: String,
+    /// Bearer token the peer expects. Omit if the peer accepts unauthenticated.
+    #[serde(default)]
+    pub bearer_token: Option<String>,
+    /// Optional human-readable description of what this peer provides.
+    #[serde(default)]
+    pub description: Option<String>,
+}
+
+impl std::fmt::Debug for A2aPeerConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("A2aPeerConfig")
+            .field("endpoint", &self.endpoint)
+            .field("bearer_token", &self.bearer_token.as_ref().map(|_| "***"))
+            .field("description", &self.description)
+            .finish()
+    }
+}
+
+impl std::fmt::Debug for A2aConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("A2aConfig")
+            .field("enabled", &self.enabled)
+            .field("agent_name", &self.agent_name)
+            .field("description", &self.description)
+            .field("public_url", &self.public_url)
+            .field("bearer_token", &self.bearer_token.as_ref().map(|_| "***"))
+            .field("version", &self.version)
+            .field("capabilities", &self.capabilities)
+            .field("allow_local_peers", &self.allow_local_peers)
+            .field("peers", &self.peers)
+            .finish()
+    }
+}
+
+impl Default for A2aConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            agent_name: None,
+            description: None,
+            public_url: None,
+            bearer_token: None,
+            version: None,
+            capabilities: Vec::new(),
+            allow_local_peers: false,
+            peers: std::collections::HashMap::new(),
         }
     }
 }
@@ -9244,6 +9351,7 @@ impl Default for Config {
             opencode_cli: OpenCodeCliConfig::default(),
             sop: SopConfig::default(),
             shell_tool: ShellToolConfig::default(),
+            a2a: A2aConfig::default(),
         }
     }
 }
@@ -11870,6 +11978,7 @@ auto_save = true
             opencode_cli: OpenCodeCliConfig::default(),
             sop: SopConfig::default(),
             shell_tool: ShellToolConfig::default(),
+            a2a: A2aConfig::default(),
         };
         // Provider fields are now resolved directly — no cache needed.
 
@@ -12439,6 +12548,7 @@ default_temperature = 0.7
             opencode_cli: OpenCodeCliConfig::default(),
             sop: SopConfig::default(),
             shell_tool: ShellToolConfig::default(),
+            a2a: A2aConfig::default(),
         };
 
         // Provider fields are now resolved directly — no cache needed.
